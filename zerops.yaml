@@ -46,3 +46,73 @@ zerops:
         # in this Fizzy Account (37signals seed account). Set to empty to reject unknowns.
         SSO_DEFAULT_ACCOUNT_EXTERNAL_ID: "897362094"
       start: zsc noop --silent
+
+  # Production-style setup — used by fizzystage and any re-imported
+  # *stage/*prod runtime. BUNDLE_DEPLOYMENT=1 bundles only runtime gems,
+  # assets are precompiled at build time, db:prepare runs once per deploy.
+  - setup: prod
+    build:
+      base: ruby@3.4
+      prepareCommands:
+        - sudo apk add --no-cache vips vips-dev mariadb-dev build-base pkgconf yaml-dev libffi-dev libheif-dev openssl-dev zlib-dev gmp-dev jemalloc nodejs
+      envVariables:
+        RAILS_ENV: production
+        BUNDLE_PATH: vendor/bundle
+        BUNDLE_DEPLOYMENT: "1"
+        BUNDLE_WITHOUT: development:test
+      buildCommands:
+        - bundle install
+        - SECRET_KEY_BASE_DUMMY=1 bundle exec bootsnap precompile --gemfile
+        - SECRET_KEY_BASE_DUMMY=1 bundle exec bootsnap precompile app/ lib/
+        - SECRET_KEY_BASE_DUMMY=1 bin/rails assets:precompile
+      deployFiles: ./
+      cache:
+        - vendor/bundle
+        - tmp/cache/bootsnap
+    deploy:
+      readinessCheck:
+        httpGet:
+          port: 3006
+          path: /up
+    run:
+      base: ruby@3.4
+      prepareCommands:
+        - sudo apk add --no-cache vips mariadb-client jemalloc nodejs
+      initCommands:
+        - zsc execOnce ${appVersionId} --retryUntilSuccessful -- bin/rails db:prepare
+      ports:
+        - port: 3006
+          httpSupport: true
+      envVariables:
+        RAILS_ENV: production
+        BUNDLE_PATH: vendor/bundle
+        BUNDLE_DEPLOYMENT: "1"
+        BUNDLE_WITHOUT: development:test
+        RAILS_LOG_TO_STDOUT: "true"
+        RAILS_SERVE_STATIC_FILES: "true"
+        SOLID_QUEUE_IN_PUMA: "true"
+        PORT: "3006"
+
+        # MariaDB (trilogy adapter) — read by config/database.mysql.yml
+        DATABASE_ADAPTER: mysql
+        MYSQL_HOST: ${fizzydb_hostname}
+        MYSQL_PORT: ${fizzydb_port}
+        MYSQL_USER: ${fizzydb_user}
+        MYSQL_PASSWORD: ${fizzydb_password}
+        MYSQL_DATABASE: ${fizzydb_dbName}
+
+        # Active Storage on S3-compatible object storage (Zerops)
+        ACTIVE_STORAGE_SERVICE: s3
+        S3_ACCESS_KEY_ID: ${fizzystorage_accessKeyId}
+        S3_SECRET_ACCESS_KEY: ${fizzystorage_secretAccessKey}
+        S3_ENDPOINT: ${fizzystorage_apiUrl}
+        S3_BUCKET: ${fizzystorage_bucketName}
+        S3_REGION: us-east-1
+        S3_FORCE_PATH_STYLE: "true"
+        S3_REQUEST_CHECKSUM_CALCULATION: when_required
+        S3_RESPONSE_CHECKSUM_VALIDATION: when_required
+        CSP_CONNECT_SRC: https://storage-prg1.zerops.io
+
+        # SSO via Authentik — set per-environment via dashboard after import:
+        #   AUTHENTIK_ISSUER, AUTHENTIK_CLIENT_ID, AUTHENTIK_CLIENT_SECRET, APP_URL
+      start: bundle exec puma -b tcp://0.0.0.0 -p 3006

@@ -18,9 +18,11 @@ services:
   - hostname: fizzystage
     type: ruby@3.4
     buildFromGit: https://github.com/krls2020/fizzy
-    zeropsSetup: fizzydev
+    zeropsSetup: prod
     verticalAutoscaling:
       minRam: 1
+    minContainers: 1
+    maxContainers: 1
   - hostname: fizzydb
     type: mariadb@10.6
     mode: NON_HA
