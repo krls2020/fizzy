@@ -1,0 +1,48 @@
+zerops:
+  - setup: fizzydev
+    build:
+      base: ruby@3.4
+      deployFiles: ./
+    run:
+      base: ruby@3.4
+      prepareCommands:
+        - sudo apk add --no-cache vips vips-dev sqlite sqlite-dev mariadb-dev mariadb-client build-base pkgconf yaml-dev libffi-dev libheif-dev openssl-dev zlib-dev gmp-dev jemalloc nodejs
+      ports:
+        - port: 3006
+          httpSupport: true
+      envVariables:
+        RAILS_ENV: development
+        BUNDLE_PATH: vendor/bundle
+        SOLID_QUEUE_IN_PUMA: "false"
+
+        # MariaDB (trilogy adapter) — read by config/database.mysql.yml
+        DATABASE_ADAPTER: mysql
+        MYSQL_HOST: ${fizzydb_hostname}
+        MYSQL_PORT: ${fizzydb_port}
+        MYSQL_USER: ${fizzydb_user}
+        MYSQL_PASSWORD: ${fizzydb_password}
+        MYSQL_DATABASE: ${fizzydb_dbName}
+
+        # Active Storage on S3-compatible object storage (Zerops)
+        ACTIVE_STORAGE_SERVICE: s3
+        S3_ACCESS_KEY_ID: ${fizzystorage_accessKeyId}
+        S3_SECRET_ACCESS_KEY: ${fizzystorage_secretAccessKey}
+        S3_ENDPOINT: ${fizzystorage_apiUrl}
+        S3_BUCKET: ${fizzystorage_bucketName}
+        S3_REGION: us-east-1
+        S3_FORCE_PATH_STYLE: "true"
+        S3_REQUEST_CHECKSUM_CALCULATION: when_required
+        S3_RESPONSE_CHECKSUM_VALIDATION: when_required
+
+        # Allow browser to PUT directly to object storage (Active Storage direct uploads)
+        CSP_CONNECT_SRC: https://storage-prg1.zerops.io
+
+        # SSO via Authentik (OpenID Connect)
+        AUTHENTIK_ISSUER: https://authentik-2174-9000.prg1.zerops.app/application/o/fizzy/
+        AUTHENTIK_CLIENT_ID: ak0HxCAX8M8O1OZdQdXPBE4IYTO1UMbKCDzFHhWM
+        AUTHENTIK_CLIENT_SECRET: nCmBtQYBwSvIKiZmedXZ0iChATGYv95S8MQaXBfkbCNTb9S7cDkFs2VmOKmdrKh7Di3axKNyapiI1584jf0LVxHdJK0VCXFXa72SRS7pHVNH7yGtzO0T3yz4qGFZWQ6Z
+        APP_URL: https://fizzydev-2174-3006.prg1.zerops.app
+        # If an unknown email comes from Authentik, auto-provision an Identity + User
+        # in this Fizzy Account (37signals seed account). Set to empty to reject unknowns.
+        SSO_DEFAULT_ACCOUNT_EXTERNAL_ID: "897362094"
+      start: zsc noop --silent

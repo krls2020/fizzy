@@ -1,0 +1,31 @@
+#zeropsPreprocessor=on
+project:
+  name: fizzy
+  envVariables:
+    APP_KEY: <@generateRandomString(<32>)>
+services:
+  - hostname: fizzydev
+    type: ruby@3.4
+    buildFromGit: https://github.com/krls2020/fizzy
+    zeropsSetup: fizzydev
+    enableSubdomainAccess: true
+    envSecrets:
+      CSP_CONNECT_SRC: https://storage-prg1.zerops.io
+    verticalAutoscaling:
+      minRam: 1
+    minContainers: 1
+    maxContainers: 1
+  - hostname: fizzystage
+    type: ruby@3.4
+    buildFromGit: https://github.com/krls2020/fizzy
+    zeropsSetup: fizzydev
+    verticalAutoscaling:
+      minRam: 1
+  - hostname: fizzydb
+    type: mariadb@10.6
+    mode: NON_HA
+    priority: 10
+  - hostname: fizzystorage
+    type: object-storage
+    objectStorageSize: 2
+    priority: 10

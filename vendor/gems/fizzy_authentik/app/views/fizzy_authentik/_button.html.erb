@@ -1,0 +1,7 @@
+<% if FizzyAuthentik.configured? %>
+  <div class="margin-block-start" data-fizzy-authentik>
+    <%= link_to "Sign in with Authentik", "/auth/authentik",
+          class: "btn btn--plain txt-link center txt-small",
+          data: { turbo: false } %>
+  </div>
+<% end %>
